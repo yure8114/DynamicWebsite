@@ -1,2 +1,2 @@
-# RESTful-Server-part-2
-part 2 of web dev project 3
+# RESTful-Server
+A Webserver and Dynamic Website that shows a crime map of St. Paul
