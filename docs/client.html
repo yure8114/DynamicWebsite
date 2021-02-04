@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>St. Paul Crime</title>
+	<script src="https://unpkg.com/vue"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js" integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew==" crossorigin=""></script>
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script type="application/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script type="application/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+	<link rel="stylesheet" type = "text/css" href="/style.css"> 
+	
+    <!-- Prompt JavaScript - this can be moved to a separate .js file if desired -->
+    <script type="application/javascript">
+        function Prompt() {
+            $("#dialog-form").dialog({
+                autoOpen: true,
+                modal: true,
+                width: "360px",
+                buttons: {
+                    "Ok": function() {
+                        var prompt_input = $("#prompt_input");
+                        Init(prompt_input.val());
+                        $(this).dialog("close");
+                    },
+                    "Cancel": function() {
+                        $(this).dialog("close");
+                    }
+                }
+            });
+        }
+    </script>
+    <!-- End: Prompt JavaScript -->
+</head>
+<body onload="Prompt()">
+
+	<!-- Prompt -->
+    <div id="dialog-form">
+        <label for="name">URL for St. Paul Crime API:</label>
+        <input type="text" id="prompt_input" class="text ui-widget-content ui-corner-all" style="width: 320px;"/>
+    </div>
+    <!-- End: Prompt -->
+	
+	<div id="app">
+		<div id="mapid" style="width: 800px; height: 600px;"></div>
+		 <div>
+			<div class = "search">
+				<input type="text" v-model="search" placeholder="Search Table"/>
+			</div> 
+			
+			<table style = "border: 1px">
+				 <thead>
+					 <th>Color</th>
+					 <th>Meaning</th>
+				 </thead>
+				 <tbody>
+					 <tr>
+						 <td style = "background-color: #BA3D3D"> Red </td>
+						 <td style = "background-color: #BA3D3D"> Violent Crime </td>
+					 </tr>
+					 <tr>
+						 <td style = "background-color: #EDF661"> Yellow </td>
+						 <td style = "background-color: #EDF661"> Property Crime </td>
+					 </tr>
+
+					 <tr>
+						 <td style = "background-color: #7FFA57"> Green </td>
+						 <td style = "background-color: #7FFA57"> Other Crime </td>
+					 </tr>
+				 </tbody>
+			 </table>
+			<table>
+				<thead>
+					<th>Neighborhood</th>
+					<th>Crime</th>
+				</thead>
+				<tbody>
+					<tr v-for= "crime in incidents" v-if = "neighborhoodMap[crime.neighborhood_number].isVisible">
+						<td>{{neighborhoodMap[crime.neighborhood_number].neighborhood}}</td>
+						<td v-bind:style="getColorY(crime.code)">{{crime.incident}}</td>
+					</tr>
+				</tbody>
+			</table>
+		 </div>
+	</div>
+
+  <script>
+	function Init(crime_api_url) {
+		console.log("getting crime data at: " + crime_api_url + "/incidents?start_date=2019-10-01&end_date=2019-10-31");
+		let currentBounds = L.latLngBounds(L.latLng(44.989484, -93.209396), L.latLng(44.890331, -93.001686));
+		
+		var app = new Vue({
+			el: '#app',
+			data: {
+				
+				incidents: null,
+				search: '',
+				neighborhoodMap: {
+					1: {"neighborhood": "Conway", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.916959, -93.025327])},
+					2: {"neighborhood": "Greater East Side", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.928323, -93.025327])},
+					3: {"neighborhood": "West Side", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.930028, -93.080447])},
+					4: {"neighborhood": "Dayton's Bluff", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.956010, -93.058301])},
+					5: {"neighborhood": "Payne/Phalen", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.980341, -93.071940])},
+					6: {"neighborhood": "North End", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.976798, -93.111655])},
+					7: {"neighborhood": "Thomas/Dale(Frogtown)", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.963089, -93.147793])},
+					8: {"neighborhood": "Summit/University", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.948611, -93.126360])},
+					9: {"neighborhood": "West Seventh", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.932707, -93.119739])},
+					10: {"neighborhood": "Como", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.981661, -93.148235])},
+					11: {"neighborhood": "Hamline/Midway", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.961778, -93.167119])},
+					12: {"neighborhood": "St. Anthony", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.973546, -93.197621])},
+					13: {"neighborhood": "Union Park", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.949164, -93.174827])},
+					14: {"neighborhood": "Macalaster-Groveland", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.934240, -93.174333])},
+					15: {"neighborhood": "Highland", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.910549, -93.177474])},
+					16: {"neighborhood": "Summit Hill", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.939011, -93.138885])},
+					17: {"neighborhood": "Capitol River", "crime_number": 0, "isVisible": true, "coordinates": L.marker([44.947381, -93.091022])}
+				},
+			
+			},
+			methods: {
+				humanizeURL: function (url) {
+				  return url
+					.replace(/^https?:\/\//, '')
+					.replace(/\/$/, '')
+				},
+				getColorY: function(incidentCod) {
+					var result = false;
+					var incidentCode = incidentCod.toString();
+					console.log(incidentCod);
+					if (incidentCode.charAt(0) == 1 && (incidentCode.charAt(1) == 1 || incidentCode.charAt(1) == 2))
+					{
+						console.log("in red");
+						return {'background-color' : '#BA3D3D'};
+
+					}
+
+					else if (incidentCode.charAt(0) == 1 && incidentCode.charAt(1) == 3)
+					{
+						return {'background-color' : '#EDF661'};
+					}
+
+					else if(incidentCode.charAt(0) == 2 || incidentCode.charAt(0) == 4 || incidentCode.charAt(0) == 8)
+					{
+						console.log("in yello")
+						return {'background-color' : '#BA3D3D'};
+					}
+
+					else if((incidentCode.charAt(0) == 3 || incidentCode.charAt(0) == 5 || incidentCode.charAt(0) == 6
+					|| incidentCode.charAt(0) == 7 || incidentCode.charAt(0) == 9) && incidentCode.length == 3)
+					{
+						return {'background-color' : '#EDF661'};
+					}
+
+					else if (incidentCode.charAt(0) == 1 && (incidentCode.charAt(1) == 3) || incidentCode.charAt(1) == 8)
+					{
+						return {'background-color' : '#EDF661'};
+					}
+					else if (incidentCode.charAt(0) == 9 && incidentCode.length == 3)
+					{
+						return {'background-color' : '#EDF661'};
+					}
+
+
+
+					else { return {'background-color' : '#7FFA57'}};
+				}
+
+			},
+			mounted (){
+				axios.get(crime_api_url + "/incidents?start_date=2019-10-01&end_date=2019-10-31")
+				.then((response) => {
+					console.log("Retrieved Data");
+					this.incidents = response.data;
+					mapInit(this.incidents, this.neighborhoodMap, currentBounds);
+				})
+			}
+		})
+	}
+
+	function mapInit(incidents, neighborhoodMap, currentBounds) {
+		console.log("Populating map");
+		var mymap = L.map('mapid').setView([44.955723, -93.106056], 13);
+		var corner1 = L.latLng(44.989484, -93.209396);
+		var corner2 = L.latLng(44.890331, -93.001686);
+		var bounds = L.latLngBounds(corner1, corner2);
+		
+		L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+			attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+				'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+				'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+			id: 'mapbox/streets-v11',
+			minZoom: 11,
+			maxZoom: 18,
+			maxBounds: bounds
+		}).addTo(mymap);
+		mymap.setMaxBounds(bounds);
+		
+		for (var key in incidents){
+			if(incidents.hasOwnProperty(key)){
+				neighborhoodMap[incidents[key].neighborhood_number]["crime_number"]++;
+			}
+		}
+		
+		for(neighborhood in neighborhoodMap){
+			if(neighborhoodMap.hasOwnProperty(neighborhood)){
+				var popup = neighborhoodMap[neighborhood].coordinates.addTo(mymap);
+				popup.bindPopup("<b>" + neighborhoodMap[neighborhood].neighborhood +"<b><br><b>" + neighborhoodMap[neighborhood].crime_number + " Crimes</b>.").openPopup();
+			}
+		}
+		
+		currentBounds = mymap.getBounds();
+		setVisibleNeighborhoods(neighborhoodMap, currentBounds);
+		
+		mymap.on('moveend', function() {
+			currentBounds = mymap.getBounds();
+			setVisibleNeighborhoods(neighborhoodMap, mymap.getBounds());
+		});
+	}
+
+	function setVisibleNeighborhoods(neighborhoodMap, currentBounds){
+		for(neighborhood in neighborhoodMap){
+			if(neighborhoodMap.hasOwnProperty(neighborhood)){
+				neighborhoodMap[neighborhood].isVisible = neighborhoodMap[neighborhood].coordinates.getLatLng().lat >= currentBounds.getSouth() &&
+					neighborhoodMap[neighborhood].coordinates.getLatLng().lat <= currentBounds.getNorth() &&
+					neighborhoodMap[neighborhood].coordinates.getLatLng().lng >= currentBounds.getWest() &&
+					neighborhoodMap[neighborhood].coordinates.getLatLng().lng <= currentBounds.getEast();
+			}
+		}
+	}
+
+
+	
+  </script>
+
+</body>
+</html>
